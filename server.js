@@ -5,32 +5,39 @@ const WebSocket = require("ws");
 const cors = require("cors");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
-// إعداد قاعدة البيانات مع Pool لتحسين الأداء
-const db = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  ssl: {
-    rejectUnauthorized: true, // إذا واجهت مشاكل، يمكن تغييره إلى false
-  },
-});
+// ✅ تحديد طريقة الاتصال
+const isRailway = process.env.RAILWAY_ENVIRONMENT_NAME === "production";
 
-// فحص الاتصال بقاعدة البيانات
-db.getConnection((err, connection) => {
+const dbConfig = isRailway
+  ? {
+      host: "mysql.railway.internal", // ✅ استخدام الاتصال الداخلي داخل Railway
+      user: "root",
+      password: process.env.MYSQLPASSWORD,
+      database: "railway",
+      port: 3306,
+    }
+  : {
+      host: "centerbeam.proxy.rlwy.net", // ✅ الاتصال العام لو السيرفر برة Railway
+      user: "root",
+      password: process.env.MYSQLPASSWORD,
+      database: "railway",
+      port: 56587,
+    };
+
+const db = mysql.createConnection(dbConfig);
+
+db.connect((err) => {
   if (err) {
     console.error("❌ Database connection failed:", err);
-  } else {
-    console.log("✅ Database connected successfully!");
-    connection.release();
+    return;
   }
+  console.log("✅ Database connected successfully!");
 });
+
+// ✅ باقي كود السيرفر هنا
+
 
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
