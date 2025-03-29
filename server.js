@@ -5,28 +5,39 @@ const WebSocket = require("ws");
 const cors = require("cors");
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-// إعداد قاعدة البيانات
-const db = mysql.createConnection({
+// إعداد قاعدة البيانات مع Pool لتحسين الأداء
+const db = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: process.env.DB_PORT,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  ssl: {
+    rejectUnauthorized: true, // إذا واجهت مشاكل، يمكن تغييره إلى false
+  },
 });
 
-db.connect((err) => {
+// فحص الاتصال بقاعدة البيانات
+db.getConnection((err, connection) => {
   if (err) {
     console.error("❌ Database connection failed:", err);
-    return;
+  } else {
+    console.log("✅ Database connected successfully!");
+    connection.release();
   }
-  console.log("✅ Database connected successfully!");
 });
 
+// إعداد WebSocket على نفس السيرفر
+const server = app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
 
-// إعداد WebSocket
-const wss = new WebSocket.Server({ port: 8080 });
+const wss = new WebSocket.Server({ server });
 
 wss.on("connection", (ws) => {
   console.log("✅ Client connected");
@@ -38,34 +49,36 @@ wss.on("connection", (ws) => {
   ws.on("close", () => console.log("❌ Client disconnected"));
 });
 
-// إعداد API لاسترجاع الأسئلة
+// إعداد API
 app.use(cors());
 app.use(express.json());
 
-app.get("/questions", (req, res) => {
-  db.query("SELECT * FROM questions", (err, results) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
+// جلب الأسئلة من قاعدة البيانات
+app.get("/questions", async (req, res) => {
+  try {
+    const [results] = await db.promise().query("SELECT * FROM questions");
     res.json(results);
-  });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-// API لإضافة سؤال جديد
-app.post("/add-question", (req, res) => {
+// إضافة سؤال جديد
+app.post("/add-question", async (req, res) => {
   const { question_text, answer } = req.body;
   if (!question_text || !answer) {
     return res.status(400).json({ error: "❌ كل الحقول مطلوبة" });
   }
 
-  const query = "INSERT INTO questions (question_text, answer) VALUES (?, ?)";
-  db.query(query, [question_text, answer], (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
+  try {
+    const [result] = await db.promise().query(
+      "INSERT INTO questions (question_text, answer) VALUES (?, ?)",
+      [question_text, answer]
+    );
+
+    const newQuestion = { id: result.insertId, question_text, answer };
 
     // إرسال التحديث لكل المتصلين بالـ WebSocket
-    const newQuestion = { id: result.insertId, question_text, answer };
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify(newQuestion));
@@ -77,10 +90,7 @@ app.post("/add-question", (req, res) => {
       message: "✅ تم إضافة السؤال بنجاح",
       question: newQuestion,
     });
-  });
-});
-
-// تشغيل السيرفر
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
