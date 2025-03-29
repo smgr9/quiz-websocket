@@ -32,12 +32,12 @@ db.getConnection((err, connection) => {
   }
 });
 
-// إعداد WebSocket على نفس السيرفر
 const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
 
 const wss = new WebSocket.Server({ server });
+
 
 wss.on("connection", (ws) => {
   console.log("✅ Client connected");
