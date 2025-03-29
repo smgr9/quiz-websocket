@@ -5,26 +5,34 @@ const WebSocket = require("ws");
 const cors = require("cors");
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000; // استخدم بورت البيئة
+const DB_HOST = process.env.DB_HOST;
+const DB_USER = process.env.DB_USER;
+const DB_PASSWORD = process.env.DB_PASSWORD;
+const DB_NAME = process.env.DB_NAME;
 
 // إعداد قاعدة البيانات
 const db = mysql.createConnection({
-  host: "localhost",
-  user: "root", // غيرها لو عندك يوزر مختلف
-  password: "", // ضع الباسورد لو عندك
-  database: "quiz_db",
+  host: DB_HOST,
+  user: DB_USER,
+  password: DB_PASSWORD,
+  database: DB_NAME,
 });
 
 db.connect((err) => {
   if (err) {
-    console.error("❌  Database connection failed:", err);
+    console.error("❌ Database connection failed:", err);
     return;
   }
   console.log("✅ Database connected successfully!");
 });
 
-// إعداد WebSocket
-const wss = new WebSocket.Server({ port: 8080 });
+// إعداد WebSocket داخل نفس السيرفر
+const server = app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+});
+
+const wss = new WebSocket.Server({ server });
 
 wss.on("connection", (ws) => {
   console.log("✅ Client connected");
@@ -36,20 +44,17 @@ wss.on("connection", (ws) => {
   ws.on("close", () => console.log("❌ Client disconnected"));
 });
 
-// إعداد API لاسترجاع الأسئلة
+// إعداد API
 app.use(cors());
 app.use(express.json());
 
 app.get("/questions", (req, res) => {
   db.query("SELECT * FROM questions", (err, results) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
+    if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
 });
 
-// API لإضافة سؤال جديد
 app.post("/add-question", (req, res) => {
   const { question_text, answer } = req.body;
   if (!question_text || !answer) {
@@ -58,11 +63,8 @@ app.post("/add-question", (req, res) => {
 
   const query = "INSERT INTO questions (question_text, answer) VALUES (?, ?)";
   db.query(query, [question_text, answer], (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
+    if (err) return res.status(500).json({ error: err.message });
 
-    // إرسال التحديث لكل المتصلين بالـ WebSocket
     const newQuestion = { id: result.insertId, question_text, answer };
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
@@ -76,9 +78,4 @@ app.post("/add-question", (req, res) => {
       question: newQuestion,
     });
   });
-});
-
-// تشغيل السيرفر
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
