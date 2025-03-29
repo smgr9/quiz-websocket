@@ -94,3 +94,20 @@ app.post("/add-question", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+app.get("/create-table", (req, res) => {
+  const query = `
+    CREATE TABLE IF NOT EXISTS questions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      question_text TEXT NOT NULL,
+      answer TEXT NOT NULL
+    )
+  `;
+
+  db.query(query, (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ success: true, message: "✅ Table created successfully!" });
+  });
+});
