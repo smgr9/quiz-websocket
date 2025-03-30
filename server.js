@@ -18,11 +18,12 @@ console.log("🔹 DB Config:", {
 
 // ✅ تحديد طريقة الاتصال بقاعدة البيانات
 const dbConfig = {
-  host: process.env.DB_HOST || "mysql.railway.internal",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "HqhcYjzhOJhTjtLcRZocEnWnIIkksMvf", // ضع كلمة مرورك هنا
-  database: process.env.DB_NAME || "railway",
-  port: process.env.DB_PORT || 3306,
+  host: "centerbeam.proxy.rlwy.net",
+  user: "root",
+  password: "HqhcYjzhOJhTjtLcRZocEnWnIIkksMvf",
+  database: "railway",
+  port: 56587, // تعديل البورت
+  ssl: { rejectUnauthorized: false }, // ضروري في بعض الحالات
 };
 
 const db = mysql.createConnection(dbConfig);
