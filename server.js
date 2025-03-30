@@ -12,19 +12,20 @@ const isRailway = process.env.RAILWAY_ENVIRONMENT_NAME === "production";
 
 const dbConfig = isRailway
   ? {
-      host: "mysql.railway.internal", // ✅ استخدام الاتصال الداخلي داخل Railway
-      user: "root",
+      host: process.env.MYSQLHOST || "centerbeam.proxy.rlwy.net",  // ✅ استخدم القيمة الصحيحة
+      user: process.env.MYSQLUSER || "root",
       password: process.env.MYSQLPASSWORD,
-      database: "railway",
-      port: 3306,
+      database: process.env.MYSQLDATABASE || "railway",
+      port: process.env.MYSQLPORT || 56587, // ✅ استخدم المنفذ الصحيح
     }
   : {
-      host: "centerbeam.proxy.rlwy.net", // ✅ الاتصال العام لو السيرفر برة Railway
+      host: "localhost", // 🟢 استخدم localhost عند التشغيل محليًا
       user: "root",
-      password: process.env.MYSQLPASSWORD,
+      password: "password", // ضع كلمة مرورك هنا
       database: "railway",
-      port: 56587,
+      port: 3306,
     };
+
 
 const db = mysql.createConnection(dbConfig);
 
