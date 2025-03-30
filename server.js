@@ -7,23 +7,32 @@ const cors = require("cors");
 const app = express();
 const PORT = 3000;
 
+// ✅ طباعة القيم للتحقق
+console.log("🔹 DB Config:", {
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD ? "****" : "Not Set",
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT
+});
+
 // ✅ تحديد طريقة الاتصال بقاعدة البيانات
 const dbConfig = {
-  host: process.env.MYSQLHOST || "localhost",
-  user: process.env.MYSQLUSER || "root",
-  password: process.env.MYSQLPASSWORD || "password", // ضع كلمة مرورك هنا
-  database: process.env.MYSQLDATABASE || "railway",
-  port: process.env.MYSQLPORT || 3306,
+  host: process.env.DB_HOST || "mysql.railway.internal",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "HqhcYjzhOJhTjtLcRZocEnWnIIkksMvf", // ضع كلمة مرورك هنا
+  database: process.env.DB_NAME || "railway",
+  port: process.env.DB_PORT || 3306,
 };
 
 const db = mysql.createConnection(dbConfig);
 
 db.connect((err) => {
   if (err) {
-    console.error("❌ Database connection failed:", err);
+    console.error("❌ Database connection failed:", err.message);
     return;
   }
-  console.log("✅ Database connected successfully!");
+  console.log("✅ Connected to Railway MySQL!");
 });
 
 // إعداد Express
