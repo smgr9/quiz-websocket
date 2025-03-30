@@ -49,6 +49,17 @@ const wss = new WebSocket.Server({ server });
 wss.on("connection", (ws) => {
   console.log("✅ Client connected");
 
+  // 🟢 عند الاتصال، اجلب الأسئلة من قاعدة البيانات
+  db.query("SELECT * FROM questions", (err, results) => {
+    if (err) {
+      console.error("❌ خطأ في جلب الأسئلة:", err);
+      ws.send(JSON.stringify({ error: "خطأ في جلب الأسئلة!" }));
+      return;
+    }
+    // إرسال الأسئلة للعميل
+    ws.send(JSON.stringify({ questions: results }));
+  });
+
   ws.on("message", (message) => {
     console.log(`📩 Received: ${message}`);
   });
