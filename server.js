@@ -7,25 +7,14 @@ const cors = require("cors");
 const app = express();
 const PORT = 3000;
 
-// ✅ تحديد طريقة الاتصال
-const isRailway = process.env.RAILWAY_ENVIRONMENT_NAME === "production";
-
-const dbConfig = isRailway
-  ? {
-      host: process.env.MYSQLHOST || "centerbeam.proxy.rlwy.net",  // ✅ استخدم القيمة الصحيحة
-      user: process.env.MYSQLUSER || "root",
-      password: process.env.MYSQLPASSWORD,
-      database: process.env.MYSQLDATABASE || "railway",
-      port: process.env.MYSQLPORT || 56587, // ✅ استخدم المنفذ الصحيح
-    }
-  : {
-      host: "localhost", // 🟢 استخدم localhost عند التشغيل محليًا
-      user: "root",
-      password: "password", // ضع كلمة مرورك هنا
-      database: "railway",
-      port: 3306,
-    };
-
+// ✅ تحديد طريقة الاتصال بقاعدة البيانات
+const dbConfig = {
+  host: process.env.MYSQLHOST || "localhost",
+  user: process.env.MYSQLUSER || "root",
+  password: process.env.MYSQLPASSWORD || "password", // ضع كلمة مرورك هنا
+  database: process.env.MYSQLDATABASE || "railway",
+  port: process.env.MYSQLPORT || 3306,
+};
 
 const db = mysql.createConnection(dbConfig);
 
@@ -37,27 +26,26 @@ db.connect((err) => {
   console.log("✅ Database connected successfully!");
 });
 
-// ✅ باقي كود السيرفر هنا
+// إعداد Express
+app.use(cors());
+app.use(express.json());
 
-
+// إنشاء WebSocket Server
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
-
 const wss = new WebSocket.Server({ server });
-
 
 wss.on("connection", (ws) => {
   console.log("✅ Client connected");
 
-  // 🟢 عند الاتصال، اجلب الأسئلة من قاعدة البيانات
+  // عند الاتصال، اجلب الأسئلة من قاعدة البيانات
   db.query("SELECT * FROM questions", (err, results) => {
     if (err) {
       console.error("❌ خطأ في جلب الأسئلة:", err);
       ws.send(JSON.stringify({ error: "خطأ في جلب الأسئلة!" }));
       return;
     }
-    // إرسال الأسئلة للعميل
     ws.send(JSON.stringify({ questions: results }));
   });
 
@@ -68,11 +56,7 @@ wss.on("connection", (ws) => {
   ws.on("close", () => console.log("❌ Client disconnected"));
 });
 
-// إعداد API
-app.use(cors());
-app.use(express.json());
-
-// جلب الأسئلة من قاعدة البيانات
+// جلب جميع الأسئلة من قاعدة البيانات
 app.get("/questions", async (req, res) => {
   try {
     const [results] = await db.promise().query("SELECT * FROM questions");
@@ -114,6 +98,7 @@ app.post("/add-question", async (req, res) => {
   }
 });
 
+// إنشاء جدول الأسئلة في قاعدة البيانات
 app.get("/create-table", (req, res) => {
   const query = `
     CREATE TABLE IF NOT EXISTS questions (
